@@ -1,0 +1,59 @@
+# frozen_string_literal: true
+
+require "tty-prompt"
+require "tty-table"
+require "simulador_aplicacao"
+
+prompt = TTY::Prompt.new
+
+parametros = {
+  aporte_inicial: prompt.ask("Informe o valor da aplicação inicial:", convert: :float, default: 1000.0, required: true),
+  indice: prompt.select("Qual vai ser o indice da aplicação?") do |menu|
+    SimuladorAplicacao::URL_API_BACEN.keys.map do |k|
+      menu.choice k.to_s.upcase, k
+    end
+    menu.default 1
+  end,
+  periodo: prompt.ask("Informe o tempo de aplicação (em meses):", convert: :int, default: 12, required: true),
+  aporte_mensal: prompt.ask("Informe o valor do aporte mensal:", convert: :float, default: 0.0, required: true),
+  resgate_mensal: prompt.ask("Informe o valor do resgate mensal:", convert: :float, default: 0.0, required: true),
+  inicio_resgate: prompt.ask("Informe o mês de iníco do resgate:", convert: :int)
+}
+parametros[:inicio_resgate] ||= parametros[:periodo]
+
+simulacao = SimuladorAplicacao.simulacao(
+  parametros[:aporte_inicial],
+  parametros[:periodo],
+  parametros[:indice],
+  parametros[:aporte_mensal],
+  parametros[:resgate_mensal],
+  parametros[:inicio_resgate]
+)
+
+tabela_simulacao = TTY::Table.new(
+  header: [
+    "Mês",
+    "Saldo Inicial",
+    "Taxa",
+    "Rendimento Bruto",
+    "Alíquota I.R.",
+    "I.R",
+    "Rendimento Líquido",
+    "Aporte",
+    "Resgate",
+    "Total Investido",
+    "Resultado",
+    "Total Acumulado"
+  ],
+  rows: simulacao.map do |mes|
+    mes.map do |k, v|
+      if k == :aliquota_imposto_renda
+        "#{format("%.2f", v * 100)}%"
+      else
+        v.is_a?(Float) ? format("%.2f", v).gsub(".", ",").gsub(/(\d)(?=(\d{3})+,)/, '\1.') : v
+      end
+    end
+  end
+)
+
+puts tabela_simulacao.render(:unicode, padding: [0, 1], alignment: :center, resize: true, multiline: false)
