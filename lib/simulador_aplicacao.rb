@@ -13,8 +13,8 @@ module SimuladorAplicacao
     ipca: "https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json"
   }.freeze
 
-  def self.simulacao(aporte_inicial, periodo, indice, aporte_mensal, resgate_mensal, inicio_resgate)
-    taxa_anual = obter_taxa_anual_atualizada(indice)
+  def self.simulacao(aporte_inicial, periodo, indice, aporte_mensal, resgate_mensal, inicio_resgate, taxa_custom)
+    taxa_anual = indice == :custom ? taxa_custom / 100.0 : obter_taxa_anual_atualizada(indice)
     taxa_juros_mensal = taxa_anual_para_mensal(taxa_anual)
     total_acumulado = aporte_inicial
     total_investido = aporte_inicial
@@ -26,7 +26,7 @@ module SimuladorAplicacao
       {
         mes: 0,
         inicial: total_acumulado,
-        taxa: "#{taxa_juros_mensal * 100}% a.m",
+        taxa: "#{format("%.2f", taxa_juros_mensal * 100)}% a.m",
         rendimento_bruto: 0.0,
         aliquota_imposto_renda: 0.0,
         imposto_renda: 0.0,
@@ -59,7 +59,7 @@ module SimuladorAplicacao
       resultado_mensal << {
         mes: mes,
         inicial: total_acumulado,
-        taxa: "#{taxa_juros_mensal * 100}% a.m",
+        taxa: "#{format("%.2f", taxa_juros_mensal * 100)}% a.m",
         rendimento_bruto: rendimento,
         aliquota_imposto_renda: aliquota_ir(mes),
         imposto_renda: imposto_renda,

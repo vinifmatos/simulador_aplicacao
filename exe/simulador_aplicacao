@@ -6,20 +6,78 @@ require "simulador_aplicacao"
 
 prompt = TTY::Prompt.new
 
-parametros = {
-  aporte_inicial: prompt.ask("Informe o valor da aplicação inicial:", convert: :float, default: 1000.0, required: true),
-  indice: prompt.select("Qual vai ser o indice da aplicação?") do |menu|
-    SimuladorAplicacao::URL_API_BACEN.keys.map do |k|
-      menu.choice k.to_s.upcase, k
-    end
-    menu.default 1
-  end,
-  periodo: prompt.ask("Informe o tempo de aplicação (em meses):", convert: :int, default: 12, required: true),
-  aporte_mensal: prompt.ask("Informe o valor do aporte mensal:", convert: :float, default: 0.0, required: true),
-  resgate_mensal: prompt.ask("Informe o valor do resgate mensal:", convert: :float, default: 0.0, required: true),
-  inicio_resgate: prompt.ask("Informe o mês de iníco do resgate:", convert: :int)
-}
-parametros[:inicio_resgate] ||= parametros[:periodo]
+parametros = {}
+
+parametros[:aporte_inicial] = prompt.ask(
+  "Informe o valor da aplicação inicial:",
+  convert: :float,
+  default: 1000.0,
+  required: true
+)
+
+parametros[:indice] = prompt.select("Qual vai ser o indice da aplicação?") do |menu|
+  SimuladorAplicacao::URL_API_BACEN.keys.map do |k|
+    menu.choice k.to_s.upcase, k
+  end
+  menu.choice "Custom", :custom
+  menu.default 1
+end
+
+if parametros[:indice] == :custom
+  parametros[:taxa_custom] = prompt.ask(
+    "Informe o valor do índice a ser utilizado (% ao ano):",
+    convert: :float,
+    required: true
+  )
+end
+
+parametros[:periodo] = prompt.ask(
+  "Informe o tempo de aplicação (em meses):",
+  convert: :int,
+  default: 12,
+  required: true
+)
+
+tera_aporte_mensal = prompt.yes?("Deseja fazer aportes mensais?") do |q|
+  q.default false
+  q.positive "Sim"
+  q.negative "Não"
+end
+
+if tera_aporte_mensal
+  parametros[:aporte_mensal] = prompt.ask(
+    "Informe o valor do aporte mensal:",
+    convert: :float,
+    required: true
+  )
+else
+  parametros[:aporte_mensal] = 0.0
+end
+
+tera_resgate_mensal = prompt.yes?("Deseja fazer resgates mensais?") do |q|
+  q.default false
+  q.positive "Sim"
+  q.negative "Não"
+end
+
+if tera_resgate_mensal
+  parametros[:resgate_mensal] = prompt.ask(
+    "Informe o valor do resgate mensal:",
+    convert: :float,
+    required: true
+  )
+  parametros[:inicio_resgate] = prompt.ask(
+    "Informe o mês de iníco do resgate:",
+    default: 1,
+    required: true,
+    convert: :int
+  ) do |q|
+    q.in("1-#{parametros[:periodo]}")
+  end
+else
+  parametros[:resgate_mensal] = 0.0
+  parametros[:inicio_resgate] = parametros[:periodo]
+end
 
 simulacao = SimuladorAplicacao.simulacao(
   parametros[:aporte_inicial],
@@ -27,7 +85,8 @@ simulacao = SimuladorAplicacao.simulacao(
   parametros[:indice],
   parametros[:aporte_mensal],
   parametros[:resgate_mensal],
-  parametros[:inicio_resgate]
+  parametros[:inicio_resgate],
+  parametros[:taxa_custom]
 )
 
 tabela_simulacao = TTY::Table.new(

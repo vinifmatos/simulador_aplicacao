@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    simulador_aplicacao (0.1.0)
+    simulador_aplicacao (0.3.0)
       tty-prompt (~> 0.23)
       tty-table (~> 0.12)
 
